@@ -14,7 +14,7 @@ import 'package:time_attendance/widget/reusable/search/reusable_search_field.dar
 class MainDepartmentScreen extends StatelessWidget {
   MainDepartmentScreen({super.key});
 
-  final DepartmentController controller = Get.find<DepartmentController>();
+  final DepartmentController controller = Get.put(DepartmentController());
   final TextEditingController _searchController = TextEditingController();
   int _currentPage = 1;
   int _itemsPerPage = 10;

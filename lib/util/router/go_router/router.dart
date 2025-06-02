@@ -9,6 +9,8 @@ import 'package:time_attendance/screen/data_enetry/inventry_main_screen.dart';
 import 'package:time_attendance/screen/device_tab_screen/main_device_screen.dart';
 import 'package:time_attendance/screen/devoice_tab_screen/main_devoice_screen.dart';
 import 'package:time_attendance/screen/employee_tab_screen/Employee_practices/emp_file.dart';
+import 'package:time_attendance/screen/employee_tab_screen/employee_settings/main_employee_settings_screen.dart';
+import 'package:time_attendance/screen/employee_tab_screen/setting_profile/main_settingprofile_screen.dart';
 import 'package:time_attendance/screen/home_tab_screens/dashboard_screen.dart';
 import 'package:time_attendance/screen/master_tab_screens/company_screens/main_company_screen.dart';
 import 'package:time_attendance/screen/master_tab_screens/department_screens/main_department_screen.dart';
@@ -27,7 +29,7 @@ import 'package:time_attendance/model/TALogin/session_manager.dart'
     if (dart.library.io) 'package:time_attendance/model/TALogin/session_manager_mobile.dart';
 
 final GoRouter router = GoRouter(
-  initialLocation: '/login', 
+  initialLocation: '/login',
   routes: [
     GoRoute(
       path: '/login',
@@ -80,13 +82,22 @@ final GoRouter router = GoRouter(
         GoRoute(
           path: '/shiftpattern',
           builder: (context, state) => MainShiftPatternScreen(),
-        
+
           redirect: _authGuard, // Protect this route
         ),
-       
         GoRoute(
           path: '/employee',
           builder: (context, state) => MainEmployeeScreen(),
+          redirect: _authGuard, // Protect this route
+        ),
+        GoRoute(
+          path: '/employeesettings',
+          builder: (context, state) => MainEmployeeSettingScreen(),
+          redirect: _authGuard, // Protect this route
+        ),
+        GoRoute(
+          path: '/settingprofile',
+          builder: (context, state) => MainSettingProfileScreen(),
           redirect: _authGuard, // Protect this route
         ),
         GoRoute(
@@ -129,7 +140,6 @@ final GoRouter router = GoRouter(
           builder: (context, state) => DownloadDeviceLogScreen(),
           redirect: _authGuard, // Protect this route
         ),
-        
       ],
     ),
   ],
@@ -150,7 +160,8 @@ Future<String?> _authGuard(BuildContext context, GoRouterState state) async {
 }
 
 // Login Redirect function
-Future<String?> _loginRedirect(BuildContext context, GoRouterState state) async {
+Future<String?> _loginRedirect(
+    BuildContext context, GoRouterState state) async {
   final isLoggedIn = await PlatformSessionManager.isLoggedIn();
   if (isLoggedIn) {
     return '/home'; // Redirect to home if user is already logged in

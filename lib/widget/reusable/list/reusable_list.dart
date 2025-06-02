@@ -8,6 +8,11 @@ class ReusableTableAndCard extends StatefulWidget {
   final Function(Map<String, String>)? onDelete;
   final Function(Map<String, String>)? onGeoFence;
   final Function(String columnName, bool isAscending)? onSort;
+  final bool showCheckboxes;
+  final Set<String>? selectedItems;
+  final Function(bool?)? onSelectAll;
+  final Function(String, bool)? onSelectItem;
+  final String? idField; // Field to use as unique identifier for selection
 
   const ReusableTableAndCard({
     super.key,
@@ -18,6 +23,11 @@ class ReusableTableAndCard extends StatefulWidget {
     this.onDelete,
     this.onGeoFence,
     this.onSort,
+    this.showCheckboxes = false,
+    this.selectedItems,
+    this.onSelectAll,
+    this.onSelectItem,
+    this.idField,
   });
 
   @override
@@ -114,10 +124,22 @@ class _ReusableTableAndCardState extends State<ReusableTableAndCard> {
             color: Theme.of(context).colorScheme.secondaryContainer,
             child: Row(
               children: [
+                if (widget.showCheckboxes) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Checkbox(
+                      value: widget.selectedItems?.length == widget.data.length,
+                      tristate: widget.selectedItems?.isNotEmpty == true && 
+                               widget.selectedItems?.length != widget.data.length,
+                      onChanged: widget.onSelectAll,
+                    ),
+                  ),
+                ],
                 Expanded(
                   flex: 9,
                   child: Row(
                     children: regularHeaders
+                        .where((header) => header != 'Select')
                         .map((header) => _buildSortableHeader(header))
                         .toList(),
                   ),
@@ -144,6 +166,7 @@ class _ReusableTableAndCardState extends State<ReusableTableAndCard> {
               scrollDirection: Axis.vertical,
               child: Column(
                 children: widget.data.map((row) {
+                  final String itemId = widget.idField != null ? row[widget.idField!] ?? '' : '';
                   return Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -156,10 +179,25 @@ class _ReusableTableAndCardState extends State<ReusableTableAndCard> {
                     ),
                     child: Row(
                       children: [
+                        if (widget.showCheckboxes) ...[
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                            child: Checkbox(
+                              value: widget.selectedItems?.contains(itemId),
+                              onChanged: (bool? value) {
+                                if (value != null && widget.onSelectItem != null) {
+                                  widget.onSelectItem!(itemId, value);
+                                }
+                              },
+                            ),
+                          ),
+                        ],
                         Expanded(
                           flex: 9,
                           child: Row(
-                            children: regularHeaders.map((header) {
+                            children: regularHeaders
+                                .where((header) => header != 'Select')
+                                .map((header) {
                               if (header == "GeoFence") {
                                 return Expanded(
                                   child: Center(

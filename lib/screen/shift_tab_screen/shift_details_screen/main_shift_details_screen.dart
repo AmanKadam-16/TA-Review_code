@@ -13,7 +13,7 @@ import 'package:time_attendance/widget/reusable/tooltip/help_tooltip_button.dart
 class MainShiftDetailsScreen extends StatelessWidget {
   MainShiftDetailsScreen({Key? key}) : super(key: key);
 
-  final ShiftDetailsController controller = Get.find<ShiftDetailsController>();
+  final ShiftDetailsController controller = Get.put(ShiftDetailsController());
   final TextEditingController _searchController = TextEditingController();
   final RxInt _currentPage = 1.obs;
   final RxInt _itemsPerPage = 10.obs;

@@ -13,7 +13,7 @@ import 'package:time_attendance/widget/reusable/tooltip/help_tooltip_button.dart
 class MainLocationScreen extends StatelessWidget {
   MainLocationScreen({Key? key}) : super(key: key);
 
-  final controller = Get.find<LocationController>();
+  final controller = Get.put(LocationController());
   final TextEditingController _searchController = TextEditingController();
   final RxInt _currentPage = 1.obs;
   final RxInt _itemsPerPage = 10.obs;

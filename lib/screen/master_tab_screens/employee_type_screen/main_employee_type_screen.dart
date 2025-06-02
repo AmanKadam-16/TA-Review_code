@@ -14,7 +14,7 @@ import 'package:time_attendance/widget/reusable/search/reusable_search_field.dar
 class MainEmployeeTypeScreen extends StatelessWidget {
   MainEmployeeTypeScreen({super.key});
 
-  final EmplyeeTypeController controller = Get.find<EmplyeeTypeController>();
+  final EmplyeeTypeController controller = Get.put(EmplyeeTypeController());
   final TextEditingController _searchController = TextEditingController();
   int _currentPage = 1;
   int _itemsPerPage = 10;

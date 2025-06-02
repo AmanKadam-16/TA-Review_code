@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:time_attendance/model/sfift_tab_model/shift_pattern_model.dart';
+import 'package:get/get.dart';
+import 'package:time_attendance/model/Masters/shiftPattern.dart';
+import 'package:time_attendance/model/Masters/list_of_shift_model.dart';
 import 'package:time_attendance/controller/shift_tab_controller/shift_pattern_controller.dart';
 import 'package:time_attendance/widget/reusable/button/form_button.dart';
 
@@ -21,6 +23,9 @@ class _ShiftPatternDialogState extends State<ShiftPatternDialog> {
   late TextEditingController _nameController;
   final _formKey = GlobalKey<FormState>();
   
+  // Regular expression for validating pattern name
+  final RegExp _patternNameRegex = RegExp(r'^[a-zA-Z][a-zA-Z0-9]*$');
+  
   // List to hold all available shifts
   List<ListOfShift> availableShifts = [];
   
@@ -33,16 +38,29 @@ class _ShiftPatternDialogState extends State<ShiftPatternDialog> {
   
   int? selectedPatternIndex;
 
+  // Error messages
+  String? patternNameError;
+  String? shiftSelectionError;
+
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.shiftPattern.patternName);
     
-    // Initialize the available shifts from controller
-    availableShifts = List.from(widget.controller.shifts);
-    
     // Initialize selected shifts from the pattern
     selectedShifts = List.from(widget.shiftPattern.listOfShifts);
+    
+    // Observe controller's shifts for changes
+    ever(widget.controller.shifts, (shifts) {
+      if (mounted) {
+        setState(() {
+          availableShifts = List.from(shifts);
+        });
+      }
+    });
+    
+    // Initialize available shifts
+    availableShifts = List.from(widget.controller.shifts);
   }
 
   @override
@@ -51,37 +69,88 @@ class _ShiftPatternDialogState extends State<ShiftPatternDialog> {
     super.dispose();
   }
 
-  void _handleSave() {
+  String? _validatePatternName(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Pattern name is required';
+    }
+    if (!_patternNameRegex.hasMatch(value)) {
+      return 'Pattern name must start with a letter and contain only letters and numbers (no spaces)';
+    }
+    return null;
+  }  bool _isValidPatternName(String name) {
+    // Pattern to match: starts with letter, followed by letters and numbers only
+    final RegExp patternNameRegex = RegExp(r'^[a-zA-Z][a-zA-Z0-9]*$');
+    return patternNameRegex.hasMatch(name);
+  }  void _handleSave() async {
+    // Reset error messages
+    setState(() {
+      patternNameError = null;
+      shiftSelectionError = null;
+    });
+
+    // Validate pattern name
+    if (!_isValidPatternName(_nameController.text)) {
+      setState(() {
+        patternNameError = 'Pattern name must start with a letter and contain only letters and numbers (no spaces)';
+      });
+      return;
+    }
+
     if (_formKey.currentState?.validate() ?? false) {
       if (selectedShifts.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select at least one shift for the pattern')),
-        );
+        setState(() {
+          shiftSelectionError = 'Please select at least one shift for the pattern';
+        });
         return;
       }
-      
-      final updatedPattern = ShiftPatternModel(
-        patternId: widget.shiftPattern.patternId,
-        patternName: _nameController.text,
-        listOfShifts: selectedShifts,
-      );
 
-      widget.controller.saveShiftPattern(updatedPattern);
-      Navigator.of(context).pop();
+      try {
+        // Convert selected shifts to a list of shift IDs
+        final List<String> shiftIds = selectedShifts.map((s) => s.shiftId.toString()).toList();
+        bool success;
+        if (widget.shiftPattern.patternId == 0) {
+          // Create new pattern
+          success = await widget.controller.saveShiftPattern(
+            _nameController.text,
+            shiftIds,
+          );
+        } else {
+          // Update existing pattern
+          success = await widget.controller.updateShiftPattern(
+            widget.shiftPattern.patternId,
+            _nameController.text,
+            shiftIds,
+          );
+        }
+
+        // Close the dialog after successful save/update
+        if (success) {
+          widget.controller.fetchShiftPatterns(); // Refresh the list
+          Navigator.of(context).pop();
+        }
+      } catch (e) {
+        // Error handling is already done in the controller
+        // The toast will show the error message
+      }
     }
   }
-
   void _addShiftToPattern() {
+    setState(() {
+      patternNameError = null;
+      shiftSelectionError = null;
+    });
+
+    // First check if pattern name is filled
+    if (_nameController.text.trim().isEmpty) {
+      setState(() {
+        patternNameError = 'Please enter Pattern Name first';
+      });
+      return;
+    }
+
     if (selectedAvailableShift != null) {
       setState(() {
-        // We copy the shift object to allow adding the same shift multiple times
-        final shiftToAdd = ListOfShift(
-          shiftId: selectedAvailableShift!.shiftId,
-          shiftName: selectedAvailableShift!.shiftName,
-          shiftType: selectedAvailableShift!.shiftType,
-        );
-        
-        selectedShifts.add(shiftToAdd);
+        selectedShifts.add(selectedAvailableShift!);
         selectedAvailableShift = null;
       });
     }
@@ -128,7 +197,7 @@ class _ShiftPatternDialogState extends State<ShiftPatternDialog> {
             child: Row(
               children: [
                 Text(
-                  widget.shiftPattern.patternId.isEmpty
+                  widget.shiftPattern.patternId == 0
                       ? 'Add Shift Pattern'
                       : 'Edit Shift Pattern',
                   style: const TextStyle(
@@ -161,10 +230,9 @@ class _ShiftPatternDialogState extends State<ShiftPatternDialog> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
+                      errorText: patternNameError,
                     ),
-                    validator: (value) => value?.isEmpty ?? true
-                        ? 'Please enter pattern name'
-                        : null,
+                    validator: _validatePatternName,
                   ),
                   const SizedBox(height: 20),
                   const Text(
@@ -174,6 +242,17 @@ class _ShiftPatternDialogState extends State<ShiftPatternDialog> {
                       color: Colors.black87,
                     ),
                   ),
+                  if (shiftSelectionError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        shiftSelectionError!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 8),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,13 +297,6 @@ class _ShiftPatternDialogState extends State<ShiftPatternDialog> {
                                                 fontWeight: FontWeight.w500,
                                               ),
                                             ),
-                                            Text(
-                                              shift.shiftType,
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey.shade600,
-                                              ),
-                                            ),
                                           ],
                                         ),
                                       ),
@@ -233,6 +305,36 @@ class _ShiftPatternDialogState extends State<ShiftPatternDialog> {
                                 },
                               ),
                             ),
+                            if (selectedAvailableShift != null) ...[
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey.shade300),
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: Colors.grey.shade50,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'ShiftName: ${selectedAvailableShift!.shiftName}',
+                                      style: const TextStyle(fontWeight: FontWeight.w500),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'InTime: ${selectedAvailableShift!.inTime}',
+                                      style: const TextStyle(fontWeight: FontWeight.w500),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'OutTime: ${selectedAvailableShift!.outTime}',
+                                      style: const TextStyle(fontWeight: FontWeight.w500),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -334,13 +436,6 @@ class _ShiftPatternDialogState extends State<ShiftPatternDialog> {
                                                         shift.shiftName,
                                                         style: const TextStyle(
                                                           fontWeight: FontWeight.w500,
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        shift.shiftType,
-                                                        style: TextStyle(
-                                                          fontSize: 12,
-                                                          color: Colors.grey.shade600,
                                                         ),
                                                       ),
                                                     ],

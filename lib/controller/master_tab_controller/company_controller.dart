@@ -28,7 +28,6 @@ class BranchController extends GetxController {
     initializeAuthBranch();
   }
 
-/******  05284f95-4af0-41c7-9573-f08508b9f46f  *******//*************  ✨ Codeium Command ⭐  *************/
   Future<void> initializeAuthBranch() async {
     try {
       MTAResult objResult = MTAResult();

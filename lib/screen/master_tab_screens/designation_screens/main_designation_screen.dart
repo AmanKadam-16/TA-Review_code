@@ -13,11 +13,28 @@ import 'package:time_attendance/widget/reusable/search/reusable_search_field.dar
 class MainDesignationScreen extends StatelessWidget {
   MainDesignationScreen({super.key});
 
-  final DesignationController controller = Get.find<DesignationController>();
+  final DesignationController controller = Get.put(DesignationController());
   final TextEditingController _searchController = TextEditingController();
-  int _currentPage = 1;
-  int _itemsPerPage = 10;
-  int _totalPages = 1;
+  // Make these observable
+  final _currentPage = 1.obs;
+  final _itemsPerPage = 10.obs;
+
+  // Calculate total pages based on filtered items
+  int get _totalPages {
+    return (controller.filteredDesignations.length / _itemsPerPage.value).ceil();
+  }
+
+  // Get paginated items
+  List<DesignationModel> get _paginatedItems {
+    final startIndex = (_currentPage.value - 1) * _itemsPerPage.value;
+    final endIndex = startIndex + _itemsPerPage.value;
+    return controller.filteredDesignations.sublist(
+      startIndex,
+      endIndex > controller.filteredDesignations.length 
+          ? controller.filteredDesignations.length 
+          : endIndex
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,10 +88,10 @@ class MainDesignationScreen extends StatelessWidget {
                   Expanded(
                     child: ReusableTableAndCard(
                       data: List.generate(
-                        controller.filteredDesignations.length,
+                        _paginatedItems.length,
                         (index) => {
-                          'Designation Name': controller.filteredDesignations[index].designationName.isEmpty ? 'N/A' : controller.filteredDesignations[index].designationName,
-                          'Master Designation': controller.filteredDesignations[index].masterDesignationName.isEmpty ? 'N/A' : controller.filteredDesignations[index].masterDesignationName,
+                          'Designation Name': _paginatedItems[index].designationName.isEmpty ? 'N/A' : _paginatedItems[index].designationName,
+                          'Master Designation': _paginatedItems[index].masterDesignationName.isEmpty ? 'N/A' : _paginatedItems[index].masterDesignationName,
                         },
                       ),
                       headers: [
@@ -105,18 +122,18 @@ class MainDesignationScreen extends StatelessWidget {
                           controller.sortDesignations(columnName, ascending),
                     ),
                   ),
-                  PaginationWidget(
-                    currentPage: _currentPage,
+                  Obx(() => PaginationWidget(
+                    currentPage: _currentPage.value,
                     totalPages: _totalPages,
                     onFirstPage: () => _handlePageChange(1),
-                    onPreviousPage: () => _handlePageChange(_currentPage - 1),
-                    onNextPage: () => _handlePageChange(_currentPage + 1),
+                    onPreviousPage: () => _handlePageChange(_currentPage.value - 1),
+                    onNextPage: () => _handlePageChange(_currentPage.value + 1),
                     onLastPage: () => _handlePageChange(_totalPages),
                     onItemsPerPageChange: _handleItemsPerPageChange,
-                    itemsPerPage: _itemsPerPage,
+                    itemsPerPage: _itemsPerPage.value,
                     itemsPerPageOptions: [10, 25, 50, 100],
                     totalItems: controller.filteredDesignations.length,
-                  ),
+                  )),
                 ],
               );
             }),
@@ -167,13 +184,13 @@ class MainDesignationScreen extends StatelessWidget {
   }
 
   void _handlePageChange(int page) {
-    _currentPage = page;
-    controller.update();
+    if (page < 1) page = 1;
+    if (page > _totalPages) page = _totalPages;
+    _currentPage.value = page;
   }
 
   void _handleItemsPerPageChange(int itemsPerPage) {
-    _itemsPerPage = itemsPerPage;
-    _currentPage = 1;
-    controller.update();
+    _itemsPerPage.value = itemsPerPage;
+    _currentPage.value = 1;
   }
 }

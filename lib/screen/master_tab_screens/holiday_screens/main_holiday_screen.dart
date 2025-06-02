@@ -18,8 +18,8 @@ class MainHolidayScreen extends StatefulWidget {
 }
 
 class _MainHolidayScreenState extends State<MainHolidayScreen> {
-  final HolidaysController controller = Get.find<HolidaysController>();
-  final BranchController branchController = Get.find<BranchController>();
+  final HolidaysController controller = Get.put(HolidaysController());
+  final BranchController branchController = Get.put(BranchController());
   final TextEditingController _searchController = TextEditingController();
   final RxInt _currentPage = 1.obs;
   final RxInt _itemsPerPage = 10.obs;
